@@ -14,4 +14,4 @@ templates = Jinja2Templates(directory=str(BASE_DIR/"templates"))
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
 
-    return {"key": "value"}
+    return templates.TemplateResponse("home.html", {"request":request})
