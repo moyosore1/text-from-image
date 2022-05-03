@@ -19,6 +19,7 @@ from PIL import Image
 import pytesseract
 
 
+
 class Settings(BaseSettings):
     debug: bool = False
     echo_active: bool = False
@@ -65,6 +66,19 @@ def verify_auth(authorization=Header(None), settings: Settings = Depends(get_set
         raise HTTPException(detail="Invalid endpoint", status_code=401)
 
 
+@app.post("/")
+async def prediction_view(file: UploadFile = File(...), authorization=Header(None), settings: Settings = Depends(get_settings)):
+    verify_auth(authorization, settings)
+    file_bytes = io.BytesIO(await file.read())
+    try:
+        img = Image.open(file_bytes)
+    except:
+        raise HTTPException(detail="Invalid image", status_code=400)
+    predictions_original = pytesseract.image_to_string(img)
+    predictions = [x for x in predictions_original.split("\n")]
+    return {"results": predictions, "original": predictions_original}
+
+
 @app.post("/image-echo/", response_class=FileResponse)
 async def image_echo_view(file: UploadFile = File(...), settings: Settings = Depends(get_settings)):
     if not settings.echo_active:
@@ -82,16 +96,3 @@ async def image_echo_view(file: UploadFile = File(...), settings: Settings = Dep
     dest = UPLOAD_DIR / f"{uuid.uuid1()}{fext}"
     img.save(dest)
     return dest
-
-
-@app.post("/")
-async def prediction_view(file: UploadFile = File(...), authorization=Header(None), settings: Settings = Depends(get_settings)):
-    verify_auth(authorization, settings)
-    file_bytes = io.BytesIO(await file.read())
-    try:
-        img = Image.open(file_bytes)
-    except:
-        raise HTTPException(detail="Invalid image", status_code=400)
-    predictions_original = pytesseract.image_to_string(img)
-    predictions = [x for x in predictions_original.split("\n")]
-    return {"results": predictions, "original": predictions_original}
